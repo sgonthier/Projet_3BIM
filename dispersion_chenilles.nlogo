@@ -7,21 +7,21 @@ patches-own
   dispers_days ;; nombre de jours (été) où la dispersion a lieu
   winter_temp ;; période hivers
   summer_temp ;; période été
-
 ]
 
 turtles-own [
   just-generated? ;; Type d'individu : larve ou papillon ? Si larve alors just-generated = true
-  ]
+]
 
 
 
 globals
 [
   dispers_season ;;période d'été durant laquelle les papillons se dispersent
+  p-move ;; proba de déplacement 
+  p-lay ;; proba de ponte
+  p-death-butterfly ;; proba de mort à l'état papillon (à mettre en fonction de la température)
 ]
-
-
 
 
 ;;################ DEFINITION DE SETUP ET GO ###############################;;
@@ -35,12 +35,15 @@ to setup
     set xcor random 200 - 100
     set ycor random 80 - 100
     set size 0.5
+    set shape "bug" 
   ]
   ask patches[ 
   set dispers_days 122
   set hauteur 0 ;; par défaut il n'y a pas de relief
   ]
-
+  set p-move 0.5
+  set p-lay 0.1
+  set p-death-butterfly 0.5
   mountain ;; création des zones de relief
   create-gradient ;;création du gradient de températures nord-sud
 end
@@ -78,6 +81,11 @@ to go
 
   ]
   
+  ;;DISPERSION
+  check-death ;;mortalité au stade papillon
+  move-turtles
+  lay-turtles ;;ponte incluant la mortalité au stade oeuf
+
   ;;A chaque pas de temps "go" un tick (= 1 jour) passe
   tick
   
@@ -85,15 +93,12 @@ to go
   if (ticks > 365) [
     reset-ticks
   ]
+
 end
 
 
 
-
-
 ;;############### A PARTIR D'ICI ON DEFINIT LES FONCTIONS UTILISEES DANS SETUP ET GO ########################;;
-
-
 
 ;;CREATION DES RELIEFS;; 
 
@@ -121,7 +126,7 @@ to mountain
           if (hauteur < 0) [set hauteur 0]
           set pcolor white
         ]
-]
+  ]
 end
 
 
@@ -135,8 +140,33 @@ to create-gradient
                             (world-width * world-height)
       set temperature normalized-value  * -6 + 19 - (hauteur / 150) ;;Pour l'altitude on prend en compte le fait que la température diminue d'1 degré tous les 150m
   ]
-
 end
 
 
+to move-turtles
+  ask turtles [
+    if ((random-float 1) <= p-move) [
+      right (random 3) * 90 ;;pour n'aller que dans 4 directions
+      forward 1
+    ]
+  ]
+end
 
+
+to check-death ;;for butterflys 
+  ask turtles [
+    if ((random-float 1) <= p-death-butterfly) [ die ] ;; removes the turtle
+  ]
+end
+
+
+to lay-turtles ;;ponte
+  ask turtles [
+    if (1 <= (count turtles-on patch-ahead 1)) [ ;;si il y a d'autres papillons avec lesquels s'accoupler
+      if ((random-float 1) <= p-lay) [
+        hatch (200 - ((random 5) + 10) * 200 / 100) ;;p-death = 10 à 15% pour les oeufs
+        die
+      ]
+    ]
+  ]
+end
